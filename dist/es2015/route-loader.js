@@ -18,14 +18,9 @@ export let TemplatingRouteLoader = (_dec2 = inject(CompositionEngine), _dec2(_cl
   loadRoute(router, config) {
     let childContainer = router.container.createChild();
 
-    let viewModel;
-    if (config.moduleId === null) {
-      viewModel = EmptyClass;
-    } else if (/\.html/i.test(config.moduleId)) {
-      viewModel = createDynamicClass(config.moduleId);
-    } else {
-      viewModel = relativeToFile(config.moduleId, Origin.get(router.container.viewModel.constructor).moduleId);
-    }
+    let viewModel = config === null ? createEmptyClass() : /\.html/.test(config.moduleId) ? createDynamicClass(config.moduleId) : relativeToFile(config.moduleId, Origin.get(router.container.viewModel.constructor).moduleId);
+
+    config = config || {};
 
     let instruction = {
       viewModel: viewModel,
@@ -63,4 +58,13 @@ function createDynamicClass(moduleId) {
 
 
   return DynamicClass;
+}
+
+function createEmptyClass() {
+  var _dec5, _class4;
+
+  let EmptyClass = (_dec5 = inlineView('<template></template>'), _dec5(_class4 = class EmptyClass {}) || _class4);
+
+
+  return EmptyClass;
 }

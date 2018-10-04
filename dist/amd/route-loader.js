@@ -52,14 +52,9 @@ define(['exports', 'aurelia-dependency-injection', 'aurelia-templating', 'aureli
     TemplatingRouteLoader.prototype.loadRoute = function loadRoute(router, config) {
       var childContainer = router.container.createChild();
 
-      var viewModel = void 0;
-      if (config.moduleId === null) {
-        viewModel = EmptyClass;
-      } else if (/\.html/i.test(config.moduleId)) {
-        viewModel = createDynamicClass(config.moduleId);
-      } else {
-        viewModel = (0, _aureliaPath.relativeToFile)(config.moduleId, _aureliaMetadata.Origin.get(router.container.viewModel.constructor).moduleId);
-      }
+      var viewModel = config === null ? createEmptyClass() : /\.html/.test(config.moduleId) ? createDynamicClass(config.moduleId) : (0, _aureliaPath.relativeToFile)(config.moduleId, _aureliaMetadata.Origin.get(router.container.viewModel.constructor).moduleId);
+
+      config = config || {};
 
       var instruction = {
         viewModel: viewModel,
@@ -106,5 +101,16 @@ define(['exports', 'aurelia-dependency-injection', 'aurelia-templating', 'aureli
 
 
     return DynamicClass;
+  }
+
+  function createEmptyClass() {
+    var _dec5, _class4;
+
+    var EmptyClass = (_dec5 = (0, _aureliaTemplating.inlineView)('<template></template>'), _dec5(_class4 = function EmptyClass() {
+      
+    }) || _class4);
+
+
+    return EmptyClass;
   }
 });

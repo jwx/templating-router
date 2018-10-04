@@ -11,6 +11,7 @@ import {
   CompositionEngine,
   ShadowDOM,
   SwapStrategies,
+  SwapStrategiesStateful,
   useView,
   inlineView
 } from 'aurelia-templating';
@@ -35,6 +36,7 @@ import {
   relativeToFile
 } from 'aurelia-path';
 export declare class RouteHref {
+  static inject(): any;
   constructor(router?: any, element?: any);
   bind(): any;
   unbind(): any;
@@ -42,16 +44,22 @@ export declare class RouteHref {
   processChange(): any;
 }
 export declare class RouterView {
+  static inject(): any;
   swapOrder: any;
   layoutView: any;
   layoutViewModel: any;
   layoutModel: any;
   element: any;
+  name: any;
+  stateful: any;
+  nonStatefulName: any;
+  hidden: any;
   constructor(element?: any, container?: any, viewSlot?: any, router?: any, viewLocator?: any, compositionTransaction?: any, compositionEngine?: any);
   created(owningView?: any): any;
   bind(bindingContext?: any, overrideContext?: any): any;
   process(viewPortInstruction?: any, waitToSwap?: any): any;
   swap(viewPortInstruction?: any): any;
+  hide(hide_: boolean): any;
 }
 
 /**

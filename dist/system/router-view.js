@@ -3,7 +3,7 @@
 System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-templating', 'aurelia-router', 'aurelia-metadata', 'aurelia-pal'], function (_export, _context) {
   "use strict";
 
-  var Container, inject, createOverrideContext, ViewSlot, ViewLocator, customElement, noView, BehaviorInstruction, bindable, CompositionTransaction, CompositionEngine, ShadowDOM, SwapStrategies, Router, Origin, DOM, _dec, _dec2, _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, RouterView, RouterViewLocator;
+  var Container, inject, createOverrideContext, ViewSlot, ViewLocator, customElement, noView, BehaviorInstruction, bindable, CompositionTransaction, CompositionEngine, ShadowDOM, SwapStrategies, SwapStrategiesStateful, Router, Origin, DOM, _dec, _class, _desc, _value, _class2, _descriptor, _descriptor2, _descriptor3, _descriptor4, RouterView, RouterViewLocator;
 
   function _initDefineProp(target, property, descriptor, context) {
     if (!descriptor) return;
@@ -67,6 +67,7 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
       CompositionEngine = _aureliaTemplating.CompositionEngine;
       ShadowDOM = _aureliaTemplating.ShadowDOM;
       SwapStrategies = _aureliaTemplating.SwapStrategies;
+      SwapStrategiesStateful = _aureliaTemplating.SwapStrategiesStateful;
     }, function (_aureliaRouter) {
       Router = _aureliaRouter.Router;
     }, function (_aureliaMetadata) {
@@ -75,7 +76,11 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
       DOM = _aureliaPal.DOM;
     }],
     execute: function () {
-      _export('RouterView', RouterView = (_dec = customElement('router-view'), _dec2 = inject(DOM.Element, Container, ViewSlot, Router, ViewLocator, CompositionTransaction, CompositionEngine), _dec(_class = noView(_class = _dec2(_class = (_class2 = function () {
+      _export('RouterView', RouterView = (_dec = customElement('router-view'), _dec(_class = noView(_class = (_class2 = function () {
+        RouterView.inject = function inject() {
+          return [DOM.Element, Container, ViewSlot, Router, ViewLocator, CompositionTransaction, CompositionEngine];
+        };
+
         function RouterView(element, container, viewSlot, router, viewLocator, compositionTransaction, compositionEngine) {
           
 
@@ -87,6 +92,8 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
 
           _initDefineProp(this, 'layoutModel', _descriptor4, this);
 
+          this.hidden = false;
+
           this.element = element;
           this.container = container;
           this.viewSlot = viewSlot;
@@ -94,7 +101,10 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
           this.viewLocator = viewLocator;
           this.compositionTransaction = compositionTransaction;
           this.compositionEngine = compositionEngine;
-          this.router.registerViewPort(this, this.element.getAttribute('name'));
+          this.name = this.element.getAttribute('name') || 'default';
+          this.stateful = this.name.indexOf('.') !== -1;
+          this.nonStatefulName = this.name.split('.')[0];
+          this.router.registerViewPort(this, this.name);
 
           if (!('initialComposition' in compositionTransaction)) {
             compositionTransaction.initialComposition = true;
@@ -120,7 +130,7 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
           var viewModelResource = component.viewModelResource;
           var metadata = viewModelResource.metadata;
           var config = component.router.currentInstruction.config;
-          var viewPort = config.viewPorts ? config.viewPorts[viewPortInstruction.name] || {} : {};
+          var viewPort = (config.viewPorts ? config.viewPorts[viewPortInstruction.name] : {}) || {};
 
           childContainer.get(RouterViewLocator)._notify(this);
 
@@ -162,16 +172,43 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
 
           var layoutInstruction = viewPortInstruction.layoutInstruction;
           var previousView = this.view;
+          var viewPort = this.router.viewPorts[viewPortInstruction.name];
+
+          var siblingViewPorts = [];
+          for (var vpName in this.router.viewPorts) {
+            var vp = this.router.viewPorts[vpName];
+            if (vp !== viewPort && vp.nonStatefulName === viewPort.nonStatefulName) {
+              siblingViewPorts.push(vp);
+            }
+          }
 
           var work = function work() {
-            var swapStrategy = SwapStrategies[_this2.swapOrder] || SwapStrategies.after;
-            var viewSlot = _this2.viewSlot;
+            if (siblingViewPorts.length > 0) {
+              var swapStrategy = SwapStrategiesStateful[_this2.swapOrder] || SwapStrategiesStateful.after;
+              var viewSlot = _this2.viewSlot;
 
-            swapStrategy(viewSlot, previousView, function () {
-              return Promise.resolve(viewSlot.add(_this2.view));
-            }).then(function () {
-              _this2._notify();
-            });
+              var previous = [];
+              if (viewPortInstruction.active) {
+                previous = siblingViewPorts;
+              }
+              if (!viewPort.stateful && viewPortInstruction.strategy === 'replace') {
+                previous.push(viewPort);
+              }
+              return swapStrategy(_this2, previous, function () {
+                return Promise.resolve(viewPortInstruction.strategy === 'replace' ? viewSlot.add(_this2.view) : undefined);
+              }).then(function () {
+                _this2._notify();
+              });
+            } else {
+              var _swapStrategy = SwapStrategies[_this2.swapOrder] || SwapStrategies.after;
+              var _viewSlot = _this2.viewSlot;
+
+              _swapStrategy(_viewSlot, previousView, function () {
+                return Promise.resolve(_viewSlot.add(_this2.view));
+              }).then(function () {
+                _this2._notify();
+              });
+            }
           };
 
           var ready = function ready(owningView) {
@@ -186,25 +223,37 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
             return work();
           };
 
-          if (layoutInstruction) {
-            if (!layoutInstruction.viewModel) {
-              layoutInstruction.viewModel = {};
+          if (viewPortInstruction.strategy === 'replace') {
+            if (layoutInstruction) {
+              if (!layoutInstruction.viewModel) {
+                layoutInstruction.viewModel = {};
+              }
+
+              return this.compositionEngine.createController(layoutInstruction).then(function (controller) {
+                ShadowDOM.distributeView(viewPortInstruction.controller.view, controller.slots || controller.view.slots);
+                controller.automate(createOverrideContext(layoutInstruction.viewModel), _this2.owningView);
+                controller.view.children.push(viewPortInstruction.controller.view);
+                return controller.view || controller;
+              }).then(function (newView) {
+                _this2.view = newView;
+                return ready(newView);
+              });
             }
 
-            return this.compositionEngine.createController(layoutInstruction).then(function (controller) {
-              ShadowDOM.distributeView(viewPortInstruction.controller.view, controller.slots || controller.view.slots);
-              controller.automate(createOverrideContext(layoutInstruction.viewModel), _this2.owningView);
-              controller.view.children.push(viewPortInstruction.controller.view);
-              return controller.view || controller;
-            }).then(function (newView) {
-              _this2.view = newView;
-              return ready(newView);
-            });
+            this.view = viewPortInstruction.controller.view;
+
+            return ready(this.owningView);
+          } else {
+            return work();
           }
+        };
 
-          this.view = viewPortInstruction.controller.view;
-
-          return ready(this.owningView);
+        RouterView.prototype.hide = function hide(hide_) {
+          if (this.hidden !== hide_) {
+            this.hidden = hide_;
+            return this.viewSlot.hide(hide_);
+          }
+          return Promise.resolve();
         };
 
         RouterView.prototype._notify = function _notify() {
@@ -227,7 +276,7 @@ System.register(['aurelia-dependency-injection', 'aurelia-binding', 'aurelia-tem
       }), _descriptor4 = _applyDecoratedDescriptor(_class2.prototype, 'layoutModel', [bindable], {
         enumerable: true,
         initializer: null
-      })), _class2)) || _class) || _class) || _class));
+      })), _class2)) || _class) || _class));
 
       _export('RouterView', RouterView);
 

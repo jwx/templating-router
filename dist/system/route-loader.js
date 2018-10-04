@@ -51,6 +51,17 @@ System.register(['aurelia-dependency-injection', 'aurelia-templating', 'aurelia-
 
     return DynamicClass;
   }
+
+  function createEmptyClass() {
+    var _dec5, _class4;
+
+    var EmptyClass = (_dec5 = inlineView('<template></template>'), _dec5(_class4 = function EmptyClass() {
+      
+    }) || _class4);
+
+
+    return EmptyClass;
+  }
   return {
     setters: [function (_aureliaDependencyInjection) {
       inject = _aureliaDependencyInjection.inject;
@@ -89,14 +100,9 @@ System.register(['aurelia-dependency-injection', 'aurelia-templating', 'aurelia-
         TemplatingRouteLoader.prototype.loadRoute = function loadRoute(router, config) {
           var childContainer = router.container.createChild();
 
-          var viewModel = void 0;
-          if (config.moduleId === null) {
-            viewModel = EmptyClass;
-          } else if (/\.html/i.test(config.moduleId)) {
-            viewModel = createDynamicClass(config.moduleId);
-          } else {
-            viewModel = relativeToFile(config.moduleId, Origin.get(router.container.viewModel.constructor).moduleId);
-          }
+          var viewModel = config === null ? createEmptyClass() : /\.html/.test(config.moduleId) ? createDynamicClass(config.moduleId) : relativeToFile(config.moduleId, Origin.get(router.container.viewModel.constructor).moduleId);
+
+          config = config || {};
 
           var instruction = {
             viewModel: viewModel,
